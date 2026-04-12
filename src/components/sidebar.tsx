@@ -9,12 +9,14 @@ import {
   Users,
   UserCircle,
   MessageCircle,
+  FolderOpen,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Tasks", href: "/tasks", icon: KanbanSquare },
   { name: "Tickets", href: "/tickets", icon: Ticket },
+  { name: "Dokumente", href: "/mediathek", icon: FolderOpen },
   { name: "CleverChat", href: "/cleverchat", icon: MessageCircle },
 ];
 
@@ -42,9 +44,6 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <p className="px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-          Hauptmenue
-        </p>
         {navigation.map((item) => {
           const active = isActive(item.href);
           return (
