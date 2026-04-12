@@ -1,12 +1,26 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  type DropResult,
-} from "@hello-pangea/dnd";
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  useDroppable,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Plus } from "lucide-react";
 import { TaskCard } from "./task-card";
 import { TaskDetailModal } from "./task-detail-modal";
@@ -45,16 +59,109 @@ const COLUMNS = [
   { id: "DONE", title: "Erledigt", color: "bg-emerald-100 text-emerald-700" },
 ];
 
+const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
+
+function SortableTaskCard({
+  task,
+  onClick,
+}: {
+  task: Task;
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      <TaskCard task={task} onClick={onClick} />
+    </div>
+  );
+}
+
+function KanbanColumn({
+  column,
+  tasks,
+  onAddTask,
+  onSelectTask,
+}: {
+  column: (typeof COLUMNS)[number];
+  tasks: Task[];
+  onAddTask: () => void;
+  onSelectTask: (task: Task) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
+
+  return (
+    <div className="flex-shrink-0 w-72">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${column.color}`}
+          >
+            {column.title}
+          </span>
+          <span className="text-xs text-slate-400">{tasks.length}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onAddTask}
+          className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div
+        ref={setNodeRef}
+        className={`min-h-[200px] rounded-lg p-2 transition-colors ${
+          isOver
+            ? "bg-primary-50 border-2 border-dashed border-primary-200"
+            : "bg-slate-50"
+        }`}
+      >
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          {tasks.map((task) => (
+            <SortableTaskCard
+              key={task.id}
+              task={task}
+              onClick={() => onSelectTask(task)}
+            />
+          ))}
+        </SortableContext>
+      </div>
+    </div>
+  );
+}
+
 export function KanbanBoard({ users }: { users: TaskUser[] }) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [createInColumn, setCreateInColumn] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor),
+  );
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -69,36 +176,155 @@ export function KanbanBoard({ users }: { users: TaskUser[] }) {
     fetchTasks();
   }, [fetchTasks]);
 
-  function getColumnTasks(status: string) {
-    return tasks
-      .filter((t) => t.status === status)
-      .sort((a, b) => a.order - b.order);
+  const getColumnTasks = useCallback(
+    (status: string) => {
+      return tasks
+        .filter((t) => t.status === status)
+        .sort((a, b) => a.order - b.order);
+    },
+    [tasks],
+  );
+
+  function findColumn(id: string): string | undefined {
+    if (COLUMN_IDS.has(id)) return id;
+    return tasks.find((t) => t.id === id)?.status;
   }
 
-  async function handleDragEnd(result: DropResult) {
-    if (!result.destination) return;
+  function handleDragStart(event: DragStartEvent) {
+    const task = tasks.find((t) => t.id === event.active.id);
+    setActiveTask(task ?? null);
+  }
 
-    const { source, destination, draggableId } = result;
-    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
 
-    const newStatus = destination.droppableId;
-    const newOrder = destination.index;
+    const activeId = String(active.id);
+    const overId = String(over.id);
 
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === draggableId ? { ...t, status: newStatus, order: newOrder } : t
-      )
-    );
+    const activeCol = findColumn(activeId);
+    const overCol = findColumn(overId);
 
-    try {
-      await fetch("/api/tasks/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId: draggableId, newStatus, newOrder }),
+    if (!activeCol || !overCol || activeCol === overCol) return;
+
+    setTasks((prev) => {
+      const sourceTasks = prev
+        .filter((t) => t.status === activeCol && t.id !== activeId)
+        .sort((a, b) => a.order - b.order);
+      const destTasks = prev
+        .filter((t) => t.status === overCol && t.id !== activeId)
+        .sort((a, b) => a.order - b.order);
+
+      let insertIndex: number;
+      if (COLUMN_IDS.has(overId)) {
+        insertIndex = destTasks.length;
+      } else {
+        const overIndex = destTasks.findIndex((t) => t.id === overId);
+        const isBelowOver =
+          (active.rect.current.translated?.top ?? 0) >
+          over.rect.top + over.rect.height / 2;
+        insertIndex = isBelowOver ? overIndex + 1 : overIndex;
+      }
+
+      const movedTask = prev.find((t) => t.id === activeId);
+      if (!movedTask) return prev;
+
+      const newSourceTasks = sourceTasks.map((t, i) => ({
+        ...t,
+        order: i,
+      }));
+      const newDestTasks = [...destTasks];
+      newDestTasks.splice(insertIndex, 0, {
+        ...movedTask,
+        status: overCol,
       });
+      const reorderedDest = newDestTasks.map((t, i) => ({ ...t, order: i }));
+
+      const untouched = prev.filter(
+        (t) => t.status !== activeCol && t.status !== overCol && t.id !== activeId,
+      );
+
+      return [...untouched, ...newSourceTasks, ...reorderedDest];
+    });
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    if (!over) {
       fetchTasks();
-    } catch {
-      toast.error("Fehler beim Verschieben");
+      return;
+    }
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    const activeCol = findColumn(activeId);
+    const overCol = findColumn(overId);
+
+    if (!activeCol || !overCol) {
+      fetchTasks();
+      return;
+    }
+
+    if (activeCol === overCol) {
+      const columnTasks = tasks
+        .filter((t) => t.status === activeCol)
+        .sort((a, b) => a.order - b.order);
+
+      const oldIndex = columnTasks.findIndex((t) => t.id === activeId);
+      let newIndex: number;
+
+      if (COLUMN_IDS.has(overId)) {
+        newIndex = columnTasks.length - 1;
+      } else {
+        newIndex = columnTasks.findIndex((t) => t.id === overId);
+      }
+
+      if (oldIndex !== newIndex && newIndex >= 0) {
+        const reordered = arrayMove(columnTasks, oldIndex, newIndex);
+        setTasks((prev) => {
+          const others = prev.filter((t) => t.status !== activeCol);
+          return [...others, ...reordered.map((t, i) => ({ ...t, order: i }))];
+        });
+
+        try {
+          await fetch("/api/tasks/reorder", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              taskId: activeId,
+              newStatus: activeCol,
+              newOrder: newIndex,
+            }),
+          });
+        } catch {
+          toast.error("Fehler beim Verschieben");
+        }
+        fetchTasks();
+      }
+    } else {
+      const destTasks = tasks
+        .filter((t) => t.status === overCol)
+        .sort((a, b) => a.order - b.order);
+
+      const newIndex = destTasks.findIndex((t) => t.id === activeId);
+      const finalIndex = newIndex >= 0 ? newIndex : destTasks.length;
+
+      try {
+        await fetch("/api/tasks/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            taskId: activeId,
+            newStatus: overCol,
+            newOrder: finalIndex,
+          }),
+        });
+      } catch {
+        toast.error("Fehler beim Verschieben");
+      }
       fetchTasks();
     }
   }
@@ -112,7 +338,7 @@ export function KanbanBoard({ users }: { users: TaskUser[] }) {
     fetchTasks();
     if (selectedTask) {
       fetch("/api/tasks")
-        .then((res) => res.ok ? res.json() : [])
+        .then((res) => (res.ok ? res.json() : []))
         .then((allTasks: Task[]) => {
           const updated = allTasks.find((t) => t.id === selectedTask.id);
           if (updated) setSelectedTask(updated);
@@ -120,7 +346,7 @@ export function KanbanBoard({ users }: { users: TaskUser[] }) {
     }
   }
 
-  if (loading || !mounted) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
@@ -141,63 +367,33 @@ export function KanbanBoard({ users }: { users: TaskUser[] }) {
         </button>
       </div>
 
-      <DragDropContext onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {COLUMNS.map((column) => {
-            const columnTasks = getColumnTasks(column.id);
-            return (
-              <div key={column.id} className="flex-shrink-0 w-72">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${column.color}`}>
-                      {column.title}
-                    </span>
-                    <span className="text-xs text-slate-400">{columnTasks.length}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCreateInColumn(column.id)}
-                    className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <Droppable droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`min-h-[200px] rounded-lg p-2 transition ${
-                        snapshot.isDraggingOver ? "bg-primary-50 border-2 border-dashed border-primary-200" : "bg-slate-50"
-                      }`}
-                    >
-                      {columnTasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={snapshot.isDragging ? "opacity-90" : ""}
-                            >
-                              <TaskCard
-                                task={task}
-                                onClick={() => setSelectedTask(task)}
-                              />
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-            );
-          })}
+          {COLUMNS.map((column) => (
+            <KanbanColumn
+              key={column.id}
+              column={column}
+              tasks={getColumnTasks(column.id)}
+              onAddTask={() => setCreateInColumn(column.id)}
+              onSelectTask={setSelectedTask}
+            />
+          ))}
         </div>
-      </DragDropContext>
+
+        <DragOverlay dropAnimation={null}>
+          {activeTask && (
+            <div className="rotate-3 scale-105">
+              <TaskCard task={activeTask} onClick={() => {}} />
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {selectedTask && (
         <TaskDetailModal

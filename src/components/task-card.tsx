@@ -17,9 +17,17 @@ export function TaskCard({ task, onClick }: { task: Task; onClick: () => void })
     : task.assignee?.email?.[0]?.toUpperCase();
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="w-full text-left bg-white border border-slate-200 rounded-lg p-3 mb-2 hover:border-slate-300 hover:shadow-sm transition cursor-pointer"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="w-full text-left bg-white border border-slate-200 rounded-lg p-3 mb-2 hover:border-slate-300 hover:shadow-sm transition cursor-grab active:cursor-grabbing select-none"
     >
       <div className="flex items-start gap-2 mb-2">
         <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${priority.dot}`} />
@@ -48,6 +56,6 @@ export function TaskCard({ task, onClick }: { task: Task; onClick: () => void })
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }
