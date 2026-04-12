@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { UserPlus, Shield, ShieldCheck } from "lucide-react";
+import { UserPlus, Shield, ShieldCheck, Clock, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 type User = {
@@ -16,8 +16,19 @@ type User = {
   _count: { assignedTasks: number };
 };
 
+type Invitation = {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  expiresAt: string;
+  createdAt: string;
+  invitedBy: { name: string | null; email: string };
+};
+
 export function UserManagement({ currentUserId, isAdmin }: { currentUserId: string; isAdmin: boolean }) {
   const [users, setUsers] = useState<User[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -26,12 +37,16 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
   const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
+    fetchData();
   }, []);
 
-  async function fetchUsers() {
-    const res = await fetch("/api/users");
-    if (res.ok) setUsers(await res.json());
+  async function fetchData() {
+    const [usersRes, invitesRes] = await Promise.all([
+      fetch("/api/users"),
+      isAdmin ? fetch("/api/users/invite") : null,
+    ]);
+    if (usersRes.ok) setUsers(await usersRes.json());
+    if (invitesRes?.ok) setInvitations(await invitesRes.json());
     setLoading(false);
   }
 
@@ -44,7 +59,7 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
       });
       if (res.ok) {
         toast.success("Rolle aktualisiert");
-        fetchUsers();
+        fetchData();
       } else {
         const data = await res.json();
         toast.error(data.error || "Fehler");
@@ -70,6 +85,7 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
         setInviteEmail("");
         setInviteName("");
         setShowInvite(false);
+        fetchData();
       } else {
         const data = await res.json();
         toast.error(data.error || "Fehler beim Einladen");
@@ -78,6 +94,24 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
       toast.error("Fehler beim Einladen");
     } finally {
       setInviting(false);
+    }
+  }
+
+  async function handleRevokeInvite(id: string) {
+    try {
+      const res = await fetch("/api/users/invite", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        toast.success("Einladung widerrufen");
+        fetchData();
+      } else {
+        toast.error("Fehler beim Widerrufen");
+      }
+    } catch {
+      toast.error("Fehler beim Widerrufen");
     }
   }
 
@@ -139,6 +173,60 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
             </button>
           </div>
         </form>
+      )}
+
+      {isAdmin && invitations.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-6">
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5" />
+              Offene Einladungen ({invitations.length})
+            </h3>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {invitations.map((invite) => {
+              const initial = invite.name
+                ? invite.name.split(" ").map((n) => n[0]).join("").toUpperCase()
+                : invite.email[0].toUpperCase();
+
+              return (
+                <div key={invite.id} className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-xs font-semibold flex-shrink-0 border border-dashed border-amber-300">
+                      {initial}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        {invite.name || invite.email}
+                      </p>
+                      {invite.name && (
+                        <p className="text-xs text-slate-500">{invite.email}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                      invite.role === "ADMIN" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"
+                    }`}>
+                      {invite.role === "ADMIN" ? <ShieldCheck className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                      {invite.role}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {formatDistanceToNow(new Date(invite.createdAt), { addSuffix: true, locale: de })}
+                    </span>
+                    <button
+                      onClick={() => handleRevokeInvite(invite.id)}
+                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition"
+                      title="Einladung widerrufen"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">

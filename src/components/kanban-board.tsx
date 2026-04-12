@@ -156,6 +156,14 @@ export function KanbanBoard({ users }: { users: TaskUser[] }) {
   const [createInColumn, setCreateInColumn] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    function onCreateTask() {
+      setCreateInColumn("TODO");
+    }
+    window.addEventListener("create-task", onCreateTask);
+    return () => window.removeEventListener("create-task", onCreateTask);
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -356,17 +364,6 @@ export function KanbanBoard({ users }: { users: TaskUser[] }) {
 
   return (
     <>
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => setCreateInColumn("TODO")}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
-        >
-          <Plus className="w-4 h-4" />
-          Neuer Task
-        </button>
-      </div>
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

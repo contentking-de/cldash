@@ -96,3 +96,17 @@ export async function GET() {
 
   return NextResponse.json(invitations);
 }
+
+export async function DELETE(req: Request) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: "ID erforderlich" }, { status: 400 });
+
+  await prisma.invitation.delete({ where: { id } });
+  return NextResponse.json({ success: true });
+}
