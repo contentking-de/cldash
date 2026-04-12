@@ -35,7 +35,7 @@ export function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-30 w-60 bg-white flex flex-col">
       <div className="h-16 flex items-center px-5">
         <img
-          src="/cleverlegal_logo.png"
+          src="/cleverdashboard.png"
           alt="clever.legal"
           className="h-10 w-auto"
         />

@@ -39,7 +39,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8 pt-[50px]">
           <img
-            src="/cleverlegal_logo.png"
+            src="/cleverdashboard.png"
             alt="clever.legal"
             className="h-12 w-auto mx-auto"
           />
