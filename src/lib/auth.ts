@@ -15,7 +15,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { Resend: ResendClient } = await import("resend");
         const resend = new ResendClient(process.env.RESEND_API_KEY);
         await resend.emails.send({
-          from: provider.from,
+          from: provider.from!,
           to: email,
           subject: "Login bei clever.legal Admin",
           html: `

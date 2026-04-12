@@ -25,7 +25,7 @@ export function Header() {
     : session?.user?.email?.[0]?.toUpperCase() || "?";
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-end gap-2 px-6 sticky top-0 z-20">
+    <header className="h-16 bg-white flex items-center justify-end gap-2 px-6 sticky top-0 z-20">
       <NotificationBell />
       <div className="relative" ref={ref}>
         <button

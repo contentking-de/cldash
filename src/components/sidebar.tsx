@@ -8,12 +8,14 @@ import {
   Ticket,
   Users,
   UserCircle,
+  MessageCircle,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Tasks", href: "/tasks", icon: KanbanSquare },
   { name: "Tickets", href: "/tickets", icon: Ticket },
+  { name: "CleverChat", href: "/cleverchat", icon: MessageCircle },
 ];
 
 const settingsNav = [
@@ -30,8 +32,8 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 w-60 bg-white border-r border-slate-200 flex flex-col">
-      <div className="h-16 flex items-center px-5 border-b border-slate-200">
+    <aside className="fixed inset-y-0 left-0 z-30 w-60 bg-white flex flex-col">
+      <div className="h-16 flex items-center px-5">
         <img
           src="/cleverlegal_logo.png"
           alt="clever.legal"

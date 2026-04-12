@@ -21,6 +21,7 @@ const typeIcons: Record<string, string> = {
   task_status: "🔄",
   task_comment: "💬",
   task_mention: "🔔",
+  chat_message: "✉️",
 };
 
 export function NotificationBell() {
