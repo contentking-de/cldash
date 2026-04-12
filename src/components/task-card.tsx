@@ -41,6 +41,10 @@ export function TaskCard({ task, onClick }: { task: Task; onClick: () => void })
         <p className="text-sm font-medium text-slate-900 line-clamp-2">{task.title}</p>
       </div>
 
+      {task.description && (
+        <p className="text-xs text-slate-500 line-clamp-2 mb-2 ml-3.5">{task.description}</p>
+      )}
+
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-2 text-xs">
           {task.dueDate && (
