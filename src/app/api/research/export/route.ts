@@ -408,7 +408,8 @@ export async function POST(req: Request) {
 
   const doc = buildDocx(messages, docTitle);
   const buffer = await Packer.toBuffer(doc);
-  const file = new File([buffer], fileName, {
+  const uint8 = new Uint8Array(buffer);
+  const file = new File([uint8], fileName, {
     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
 
