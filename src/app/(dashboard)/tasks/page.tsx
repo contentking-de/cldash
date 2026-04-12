@@ -24,7 +24,7 @@ export default async function TasksPage() {
         </div>
         <NewTaskButton />
       </div>
-      <KanbanBoard users={users} />
+      <KanbanBoard users={users} currentUserId={session.user?.id ?? ""} />
     </div>
   );
 }

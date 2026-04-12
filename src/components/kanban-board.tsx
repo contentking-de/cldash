@@ -21,7 +21,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus } from "lucide-react";
+import { Plus, Search, User, X } from "lucide-react";
 import { TaskCard } from "./task-card";
 import { TaskDetailModal } from "./task-detail-modal";
 import { CreateTaskModal } from "./create-task-modal";
@@ -149,12 +149,16 @@ function KanbanColumn({
   );
 }
 
-export function KanbanBoard({ users }: { users: TaskUser[] }) {
+export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; currentUserId: string }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [createInColumn, setCreateInColumn] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterAssignee, setFilterAssignee] = useState("");
+  const [showMyTasks, setShowMyTasks] = useState(false);
 
   useEffect(() => {
     function onCreateTask() {
@@ -184,13 +188,38 @@ export function KanbanBoard({ users }: { users: TaskUser[] }) {
     fetchTasks();
   }, [fetchTasks]);
 
+  const hasActiveFilters = searchQuery !== "" || filterAssignee !== "" || showMyTasks;
+
+  const filteredTasks = useMemo(() => {
+    let result = tasks;
+
+    if (showMyTasks) {
+      result = result.filter((t) => t.assigneeId === currentUserId || t.creatorId === currentUserId);
+    }
+
+    if (filterAssignee) {
+      result = result.filter((t) => t.assigneeId === filterAssignee);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.description?.toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [tasks, searchQuery, filterAssignee, showMyTasks, currentUserId]);
+
   const getColumnTasks = useCallback(
     (status: string) => {
-      return tasks
+      return filteredTasks
         .filter((t) => t.status === status)
         .sort((a, b) => a.order - b.order);
     },
-    [tasks],
+    [filteredTasks],
   );
 
   function findColumn(id: string): string | undefined {
@@ -364,6 +393,56 @@ export function KanbanBoard({ users }: { users: TaskUser[] }) {
 
   return (
     <>
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Tasks durchsuchen..."
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 placeholder:text-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+          />
+        </div>
+
+        <select
+          value={filterAssignee}
+          onChange={(e) => setFilterAssignee(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+        >
+          <option value="">Alle Mitglieder</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name || u.email}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          onClick={() => setShowMyTasks((v) => !v)}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition ${
+            showMyTasks
+              ? "bg-primary-50 border-primary-300 text-primary-700"
+              : "border-slate-300 text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          <User className="w-4 h-4" />
+          Meine Tasks
+        </button>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={() => { setSearchQuery(""); setFilterAssignee(""); setShowMyTasks(false); }}
+            className="flex items-center gap-1 px-2.5 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 transition"
+          >
+            <X className="w-3.5 h-3.5" />
+            Filter zuruecksetzen
+          </button>
+        )}
+      </div>
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
