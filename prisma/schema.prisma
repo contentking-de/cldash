@@ -53,7 +53,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   createdTasks  Task[]          @relation("TaskCreator")
-  assignedTasks Task[]          @relation("TaskAssignee")
+  assignedTasks Task[]          @relation("TaskAssignees")
   taskComments  TaskComment[]
   reportedTickets Ticket[]      @relation("TicketReporter")
   assignedTickets Ticket[]      @relation("TicketAssignee")
@@ -108,17 +108,15 @@ model Task {
   priority    Priority   @default(MEDIUM)
   order       Int        @default(0)
   dueDate     DateTime?
-  assigneeId  String?
   creatorId   String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  assignee User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  creator  User          @relation("TaskCreator", fields: [creatorId], references: [id])
-  comments TaskComment[]
+  assignees User[]        @relation("TaskAssignees")
+  creator   User          @relation("TaskCreator", fields: [creatorId], references: [id])
+  comments  TaskComment[]
 
   @@index([status])
-  @@index([assigneeId])
 }
 
 model TaskComment {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { X, Check, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import type { TaskUser } from "./kanban-board";
 
@@ -19,9 +19,27 @@ export function CreateTaskModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
-  const [assigneeId, setAssigneeId] = useState("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowAssigneeDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function toggleAssignee(id: string) {
+    setAssigneeIds((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,7 +54,7 @@ export function CreateTaskModal({
           description: description || undefined,
           status: defaultStatus,
           priority,
-          assigneeId: assigneeId || null,
+          assigneeIds,
           dueDate: dueDate || null,
         }),
       });
@@ -53,6 +71,8 @@ export function CreateTaskModal({
       setLoading(false);
     }
   }
+
+  const selectedUsers = users.filter((u) => assigneeIds.includes(u.id));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -103,22 +123,61 @@ export function CreateTaskModal({
               </select>
             </div>
 
-            <div>
+            <div ref={dropdownRef} className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Zuweisen an</label>
-              <select
-                value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
-                className="block w-full rounded-lg border border-slate-300 pl-3.5 pr-8 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              <button
+                type="button"
+                onClick={() => setShowAssigneeDropdown((v) => !v)}
+                className="flex items-center justify-between w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-left focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
               >
-                <option value="">Niemand</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name || u.email}
-                  </option>
-                ))}
-              </select>
+                <span className={selectedUsers.length === 0 ? "text-slate-400" : "text-slate-900 truncate"}>
+                  {selectedUsers.length === 0
+                    ? "Niemand"
+                    : selectedUsers.length === 1
+                      ? selectedUsers[0].name || selectedUsers[0].email
+                      : `${selectedUsers.length} Personen`}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              </button>
+              {showAssigneeDropdown && (
+                <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {users.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => toggleAssignee(u.id)}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-slate-50 transition"
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                        assigneeIds.includes(u.id)
+                          ? "bg-primary-600 border-primary-600"
+                          : "border-slate-300"
+                      }`}>
+                        {assigneeIds.includes(u.id) && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="truncate">{u.name || u.email}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+
+          {selectedUsers.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedUsers.map((u) => (
+                <span
+                  key={u.id}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-primary-50 text-primary-700 rounded-full"
+                >
+                  {u.name || u.email}
+                  <button type="button" onClick={() => toggleAssignee(u.id)} className="hover:text-primary-900">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Deadline</label>

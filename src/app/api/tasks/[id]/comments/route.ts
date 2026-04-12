@@ -52,28 +52,31 @@ export async function POST(
 
   const task = await prisma.task.findUnique({
     where: { id },
-    include: { assignee: { select: { id: true, name: true, email: true } } },
+    include: { assignees: { select: { id: true, name: true, email: true } } },
   });
 
   const commentAuthor = session.user.name || session.user.email || "Jemand";
   const notifiedUserIds = new Set<string>();
 
-  if (task?.assignee && task.assignee.id !== session.user.id) {
-    notifiedUserIds.add(task.assignee.id);
-    sendTaskCommentEmail({
-      assigneeEmail: task.assignee.email,
-      assigneeName: task.assignee.name,
-      taskTitle: task.title,
-      commentAuthor,
-      commentContent: parsed.data.content,
-    }).catch(console.error);
-    createNotification({
-      userId: task.assignee.id,
-      type: "task_comment",
-      title: `Neuer Kommentar: ${task.title}`,
-      body: `${commentAuthor}: ${parsed.data.content.length > 100 ? parsed.data.content.slice(0, 100) + "…" : parsed.data.content}`,
-      link: `/tasks?task=${id}`,
-    }).catch(console.error);
+  if (task?.assignees) {
+    for (const assignee of task.assignees) {
+      if (assignee.id === session.user.id) continue;
+      notifiedUserIds.add(assignee.id);
+      sendTaskCommentEmail({
+        assigneeEmail: assignee.email,
+        assigneeName: assignee.name,
+        taskTitle: task.title,
+        commentAuthor,
+        commentContent: parsed.data.content,
+      }).catch(console.error);
+      createNotification({
+        userId: assignee.id,
+        type: "task_comment",
+        title: `Neuer Kommentar: ${task.title}`,
+        body: `${commentAuthor}: ${parsed.data.content.length > 100 ? parsed.data.content.slice(0, 100) + "…" : parsed.data.content}`,
+        link: `/tasks?task=${id}`,
+      }).catch(console.error);
+    }
   }
 
   if (task && parsed.data.mentionedUserIds.length > 0) {

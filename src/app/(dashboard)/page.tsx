@@ -47,7 +47,7 @@ export default async function DashboardPage() {
     getStats(),
     prisma.task.findMany({
       where: {
-        assigneeId: session.user.id,
+        assignees: { some: { id: session.user.id } },
         status: { not: "DONE" },
       },
       orderBy: [

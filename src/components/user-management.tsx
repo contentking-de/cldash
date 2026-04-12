@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { UserPlus, Shield, ShieldCheck, Clock, X } from "lucide-react";
+import { UserPlus, Shield, ShieldCheck, Clock, X, Pencil, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 type User = {
@@ -36,6 +36,15 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
   const [inviteRole, setInviteRole] = useState("MEMBER");
   const [inviting, setInviting] = useState(false);
 
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -48,6 +57,78 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
     if (usersRes.ok) setUsers(await usersRes.json());
     if (invitesRes?.ok) setInvitations(await invitesRes.json());
     setLoading(false);
+  }
+
+  function openEdit(user: User) {
+    setEditUser(user);
+    setEditName(user.name || "");
+    setEditEmail(user.email);
+    setEditRole(user.role);
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editUser) return;
+    setSaving(true);
+
+    try {
+      const body: Record<string, string> = { userId: editUser.id };
+      if (editName !== (editUser.name || "")) body.name = editName;
+      if (editEmail !== editUser.email) body.email = editEmail;
+      if (editRole !== editUser.role) body.role = editRole;
+
+      if (Object.keys(body).length === 1) {
+        toast("Keine Aenderungen", { icon: "💡" });
+        setEditUser(null);
+        setSaving(false);
+        return;
+      }
+
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        toast.success("Nutzer aktualisiert");
+        setEditUser(null);
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Fehler beim Speichern");
+      }
+    } catch {
+      toast.error("Fehler beim Speichern");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+
+    try {
+      const res = await fetch("/api/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: deleteTarget.id }),
+      });
+
+      if (res.ok) {
+        toast.success("Nutzer geloescht");
+        setDeleteTarget(null);
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Fehler beim Loeschen");
+      }
+    } catch {
+      toast.error("Fehler beim Loeschen");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handleRoleChange(userId: string, role: string) {
@@ -238,7 +319,7 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tasks</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Beigetreten</th>
               {isAdmin && (
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Aktion</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Aktionen</th>
               )}
             </tr>
           </thead>
@@ -279,16 +360,24 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
                   </td>
                   {isAdmin && (
                     <td className="px-4 py-3">
-                      {!isSelf && (
-                        <select
-                          value={user.role}
-                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                          className="rounded-lg border border-slate-300 pl-2 pr-7 py-1 text-xs focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEdit(user)}
+                          className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                          title="Bearbeiten"
                         >
-                          <option value="MEMBER">Member</option>
-                          <option value="ADMIN">Admin</option>
-                        </select>
-                      )}
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        {!isSelf && (
+                          <button
+                            onClick={() => setDeleteTarget(user)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Loeschen"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -297,6 +386,127 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
           </tbody>
         </table>
       </div>
+
+      {/* Edit Modal */}
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditUser(null)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-semibold text-slate-900">Nutzer bearbeiten</h3>
+              <button
+                onClick={() => setEditUser(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Name"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">E-Mail</label>
+                <input
+                  type="email"
+                  required
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Rolle</label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  disabled={editUser.id === currentUserId}
+                  className="block w-full rounded-lg border border-slate-300 pl-3.5 pr-8 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition disabled:opacity-50"
+                >
+                  <option value="MEMBER">Member</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+                {editUser.id === currentUserId && (
+                  <p className="text-xs text-slate-400 mt-1">Du kannst deine eigene Rolle nicht aendern</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditUser(null)}
+                  className="px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50 transition"
+                >
+                  {saving ? "Speichern..." : "Speichern"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Nutzer loeschen</h3>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-2">
+              Bist du sicher, dass du diesen Nutzer loeschen moechtest?
+            </p>
+            <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3 mb-5">
+              <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                {deleteTarget.name
+                  ? deleteTarget.name.split(" ").map((n) => n[0]).join("").toUpperCase()
+                  : deleteTarget.email[0].toUpperCase()}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-900">{deleteTarget.name || deleteTarget.email}</p>
+                {deleteTarget.name && <p className="text-xs text-slate-500">{deleteTarget.email}</p>}
+              </div>
+            </div>
+            <p className="text-xs text-red-600 mb-5">
+              Alle zugehoerigen Daten (Sessions, Accounts) werden ebenfalls geloescht.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 transition"
+              >
+                {deleting ? "Loeschen..." : "Endgueltig loeschen"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

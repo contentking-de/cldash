@@ -43,9 +43,8 @@ export type Task = {
   priority: string;
   order: number;
   dueDate: string | null;
-  assigneeId: string | null;
   creatorId: string;
-  assignee: TaskUser | null;
+  assignees: TaskUser[];
   creator: TaskUser;
   _count: { comments: number };
   createdAt: string;
@@ -209,11 +208,11 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
     let result = tasks;
 
     if (showMyTasks) {
-      result = result.filter((t) => t.assigneeId === currentUserId || t.creatorId === currentUserId);
+      result = result.filter((t) => t.assignees.some((a) => a.id === currentUserId) || t.creatorId === currentUserId);
     }
 
     if (filterAssignee) {
-      result = result.filter((t) => t.assigneeId === filterAssignee);
+      result = result.filter((t) => t.assignees.some((a) => a.id === filterAssignee));
     }
 
     if (searchQuery.trim()) {

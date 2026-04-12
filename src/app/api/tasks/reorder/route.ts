@@ -28,7 +28,7 @@ export async function PUT(req: Request) {
   const task = await prisma.task.findUniqueOrThrow({
     where: { id: taskId },
     include: {
-      assignee: { select: { id: true, name: true, email: true } },
+      assignees: { select: { id: true, name: true, email: true } },
     },
   });
   const oldStatus = task.status;
@@ -63,31 +63,30 @@ export async function PUT(req: Request) {
     });
   });
 
-  if (
-    oldStatus !== newStatus &&
-    task.assignee &&
-    task.assignee.id !== session.user.id
-  ) {
+  if (oldStatus !== newStatus) {
     const changedByName = session.user.name || session.user.email || "Jemand";
     const statusLabels: Record<string, string> = {
       BACKLOG: "Backlog", TODO: "To Do", IN_PROGRESS: "In Arbeit",
       REVIEW: "Review", DONE: "Erledigt",
     };
-    sendTaskStatusChangedEmail({
-      assigneeEmail: task.assignee.email,
-      assigneeName: task.assignee.name,
-      taskTitle: task.title,
-      oldStatus,
-      newStatus,
-      changedByName,
-    }).catch(console.error);
-    createNotification({
-      userId: task.assignee.id,
-      type: "task_status",
-      title: `Status geändert: ${task.title}`,
-      body: `${changedByName} hat den Status von "${statusLabels[oldStatus] || oldStatus}" auf "${statusLabels[newStatus] || newStatus}" geändert.`,
-      link: `/tasks?task=${taskId}`,
-    }).catch(console.error);
+    for (const assignee of task.assignees) {
+      if (assignee.id === session.user.id) continue;
+      sendTaskStatusChangedEmail({
+        assigneeEmail: assignee.email,
+        assigneeName: assignee.name,
+        taskTitle: task.title,
+        oldStatus,
+        newStatus,
+        changedByName,
+      }).catch(console.error);
+      createNotification({
+        userId: assignee.id,
+        type: "task_status",
+        title: `Status geändert: ${task.title}`,
+        body: `${changedByName} hat den Status von "${statusLabels[oldStatus] || oldStatus}" auf "${statusLabels[newStatus] || newStatus}" geändert.`,
+        link: `/tasks?task=${taskId}`,
+      }).catch(console.error);
+    }
   }
 
   return NextResponse.json({ success: true });

@@ -20,9 +20,6 @@ function getDueDateStyle(dueDate: string, status: string) {
 
 export function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
   const priority = priorityConfig[task.priority] || priorityConfig.MEDIUM;
-  const initials = task.assignee?.name
-    ? task.assignee.name.split(" ").map((n) => n[0]).join("").toUpperCase()
-    : task.assignee?.email?.[0]?.toUpperCase();
 
   const isOverdue = task.dueDate && task.status !== "DONE" && isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate));
 
@@ -60,9 +57,27 @@ export function TaskCard({ task, onClick }: { task: Task; onClick: () => void })
           )}
         </div>
 
-        {task.assignee && (
-          <div className="w-6 h-6 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-[10px] font-semibold">
-            {initials}
+        {task.assignees.length > 0 && (
+          <div className="flex -space-x-1.5">
+            {task.assignees.slice(0, 3).map((assignee) => {
+              const initials = assignee.name
+                ? assignee.name.split(" ").map((n) => n[0]).join("").toUpperCase()
+                : assignee.email[0].toUpperCase();
+              return (
+                <div
+                  key={assignee.id}
+                  title={assignee.name || assignee.email}
+                  className="w-6 h-6 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-[10px] font-semibold ring-2 ring-white"
+                >
+                  {initials}
+                </div>
+              );
+            })}
+            {task.assignees.length > 3 && (
+              <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-semibold ring-2 ring-white">
+                +{task.assignees.length - 3}
+              </div>
+            )}
           </div>
         )}
       </div>

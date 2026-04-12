@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, type KeyboardEvent } from "react";
-import { X, Send, Trash2, Pencil, Check } from "lucide-react";
+import { X, Send, Trash2, Pencil, Check, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import toast from "react-hot-toast";
@@ -49,8 +49,29 @@ export function TaskDetailModal({
   const [description, setDescription] = useState(task.description || "");
   const [priority, setPriority] = useState(task.priority);
   const [status, setStatus] = useState(task.status);
-  const [assigneeId, setAssigneeId] = useState(task.assigneeId || "");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(task.assignees.map((a) => a.id));
   const [dueDate, setDueDate] = useState(task.dueDate ? task.dueDate.slice(0, 10) : "");
+
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const assigneeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (assigneeDropdownRef.current && !assigneeDropdownRef.current.contains(e.target as Node)) {
+        setShowAssigneeDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function toggleAssignee(userId: string) {
+    const newIds = assigneeIds.includes(userId)
+      ? assigneeIds.filter((id) => id !== userId)
+      : [...assigneeIds, userId];
+    setAssigneeIds(newIds);
+    handleUpdate("assigneeIds", newIds);
+  }
 
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -78,7 +99,7 @@ export function TaskDetailModal({
     fetchComments();
   }, [fetchComments]);
 
-  async function handleUpdate(field: string, value: string | null) {
+  async function handleUpdate(field: string, value: string | string[] | null) {
     try {
       await fetch(`/api/tasks/${task.id}`, {
         method: "PATCH",
@@ -301,18 +322,43 @@ export function TaskDetailModal({
                 ))}
               </select>
             </div>
-            <div>
+            <div ref={assigneeDropdownRef} className="relative">
               <label className="block text-xs font-medium text-slate-500 mb-1">Zugewiesen an</label>
-              <select
-                value={assigneeId}
-                onChange={(e) => { setAssigneeId(e.target.value); handleUpdate("assigneeId", e.target.value || null); }}
-                className="block w-full rounded-lg border border-slate-300 pl-3 pr-8 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              <button
+                type="button"
+                onClick={() => setShowAssigneeDropdown((v) => !v)}
+                className="flex items-center justify-between w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-left focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
               >
-                <option value="">Niemand</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                ))}
-              </select>
+                <span className={assigneeIds.length === 0 ? "text-slate-400" : "text-slate-900 truncate"}>
+                  {assigneeIds.length === 0
+                    ? "Niemand"
+                    : assigneeIds.length === 1
+                      ? (users.find((u) => u.id === assigneeIds[0])?.name || users.find((u) => u.id === assigneeIds[0])?.email || "1 Person")
+                      : `${assigneeIds.length} Personen`}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              </button>
+              {showAssigneeDropdown && (
+                <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {users.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => toggleAssignee(u.id)}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-slate-50 transition"
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                        assigneeIds.includes(u.id)
+                          ? "bg-primary-600 border-primary-600"
+                          : "border-slate-300"
+                      }`}>
+                        {assigneeIds.includes(u.id) && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="truncate">{u.name || u.email}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
