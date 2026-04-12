@@ -301,9 +301,10 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    const draggedTask = activeTask;
     setActiveTask(null);
 
-    if (!over) {
+    if (!over || !draggedTask) {
       fetchTasks();
       return;
     }
@@ -311,17 +312,17 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    const activeCol = findColumn(activeId);
-    const overCol = findColumn(overId);
+    const originalCol = draggedTask.status;
+    const targetCol = COLUMN_IDS.has(overId) ? overId : tasks.find((t) => t.id === overId)?.status;
 
-    if (!activeCol || !overCol) {
+    if (!targetCol) {
       fetchTasks();
       return;
     }
 
-    if (activeCol === overCol) {
+    if (originalCol === targetCol) {
       const columnTasks = tasks
-        .filter((t) => t.status === activeCol)
+        .filter((t) => t.status === originalCol)
         .sort((a, b) => a.order - b.order);
 
       const oldIndex = columnTasks.findIndex((t) => t.id === activeId);
@@ -336,7 +337,7 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
       if (oldIndex !== newIndex && newIndex >= 0) {
         const reordered = arrayMove(columnTasks, oldIndex, newIndex);
         setTasks((prev) => {
-          const others = prev.filter((t) => t.status !== activeCol);
+          const others = prev.filter((t) => t.status !== originalCol);
           return [...others, ...reordered.map((t, i) => ({ ...t, order: i }))];
         });
 
@@ -346,7 +347,7 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               taskId: activeId,
-              newStatus: activeCol,
+              newStatus: originalCol,
               newOrder: newIndex,
             }),
           });
@@ -357,7 +358,7 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
       }
     } else {
       const destTasks = tasks
-        .filter((t) => t.status === overCol)
+        .filter((t) => t.status === targetCol)
         .sort((a, b) => a.order - b.order);
 
       const newIndex = destTasks.findIndex((t) => t.id === activeId);
@@ -369,7 +370,7 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             taskId: activeId,
-            newStatus: overCol,
+            newStatus: targetCol,
             newOrder: finalIndex,
           }),
         });
