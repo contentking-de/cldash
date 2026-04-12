@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# clever.legal Admin Dashboard
 
-## Getting Started
+Internes Admin-Dashboard der clever.legal GmbH.
 
-First, run the development server:
+## Tech-Stack
+
+- **Next.js 16** (App Router) + TypeScript
+- **Tailwind CSS v4**
+- **Prisma** + Neon PostgreSQL
+- **NextAuth.js v5** (Magic Link Auth)
+- **Resend** (Email-Benachrichtigungen)
+
+## Features
+
+- Kanban-Board fuer Task-Management (Drag & Drop)
+- Ticketsystem (Bugs, Features, Ideen)
+- Nutzerverwaltung mit Rollen (Admin/Member)
+- Email-Benachrichtigungen bei neuen Tasks und Kommentaren
+- Magic-Link-Authentifizierung
+
+## Setup
 
 ```bash
+# Dependencies installieren
+npm install
+
+# .env-Datei erstellen
+cp .env.example .env
+# Dann die Werte in .env eintragen
+
+# Prisma Client generieren
+npx prisma generate
+
+# Datenbank-Migration ausfuehren
+npx prisma db push
+
+# Entwicklungsserver starten
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Umgebungsvariablen
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Beschreibung |
+|---|---|
+| `DATABASE_URL` | Neon PostgreSQL Connection String |
+| `NEXTAUTH_SECRET` | Random Secret fuer NextAuth |
+| `NEXTAUTH_URL` | App URL (z.B. https://admin.clever.legal) |
+| `RESEND_API_KEY` | Resend API Key |
+| `RESEND_FROM_EMAIL` | Absender-Email (z.B. noreply@clever.legal) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Erster Admin-User
 
-## Learn More
+Nach dem ersten Login wird ein User mit der Rolle `MEMBER` erstellt. Um den ersten Admin zu setzen:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npx prisma studio
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Dort den User auf `ADMIN` setzen.
