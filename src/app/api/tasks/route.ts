@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       type: "task_assigned",
       title: `Neuer Task: ${task.title}`,
       body: `${assignedByName} hat dir einen neuen Task zugewiesen.`,
-      link: "/tasks",
+      link: `/tasks?task=${task.id}`,
     }).catch(console.error);
   }
 

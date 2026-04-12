@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -159,6 +160,20 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("");
   const [showMyTasks, setShowMyTasks] = useState(false);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const taskId = searchParams.get("task");
+    if (taskId && tasks.length > 0 && !selectedTask) {
+      const found = tasks.find((t) => t.id === taskId);
+      if (found) {
+        setSelectedTask(found);
+        router.replace("/tasks", { scroll: false });
+      }
+    }
+  }, [searchParams, tasks, selectedTask, router]);
 
   useEffect(() => {
     function onCreateTask() {

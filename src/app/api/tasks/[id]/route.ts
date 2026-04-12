@@ -76,7 +76,7 @@ export async function PATCH(
       type: "task_status",
       title: `Status geändert: ${task.title}`,
       body: `${changedByName} hat den Status von "${statusLabels[oldTask.status] || oldTask.status}" auf "${statusLabels[parsed.data.status] || parsed.data.status}" geändert.`,
-      link: "/tasks",
+      link: `/tasks?task=${id}`,
     }).catch(console.error);
   }
 

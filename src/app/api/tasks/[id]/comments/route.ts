@@ -68,7 +68,7 @@ export async function POST(
       type: "task_comment",
       title: `Neuer Kommentar: ${task.title}`,
       body: `${commentAuthor}: ${parsed.data.content.length > 100 ? parsed.data.content.slice(0, 100) + "…" : parsed.data.content}`,
-      link: "/tasks",
+      link: `/tasks?task=${id}`,
     }).catch(console.error);
   }
 

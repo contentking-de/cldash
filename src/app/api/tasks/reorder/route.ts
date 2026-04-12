@@ -86,7 +86,7 @@ export async function PUT(req: Request) {
       type: "task_status",
       title: `Status geändert: ${task.title}`,
       body: `${changedByName} hat den Status von "${statusLabels[oldStatus] || oldStatus}" auf "${statusLabels[newStatus] || newStatus}" geändert.`,
-      link: "/tasks",
+      link: `/tasks?task=${taskId}`,
     }).catch(console.error);
   }
 

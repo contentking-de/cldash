@@ -64,11 +64,17 @@ export function NotificationBell() {
     } catch { /* ignore */ }
   }
 
-  function handleClick(n: Notification) {
+  async function handleClick(n: Notification) {
+    if (!n.read) {
+      fetch(`/api/notifications/${n.id}`, { method: "PATCH" }).catch(() => {});
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
+      );
+    }
     if (n.link) {
       router.push(n.link);
-      setOpen(false);
     }
+    setOpen(false);
   }
 
   return (
