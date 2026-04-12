@@ -33,14 +33,18 @@ export function NotificationBell() {
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications");
-      if (res.ok) setNotifications(await res.json());
-    } catch { /* ignore */ }
+      if (res.ok) {
+        setNotifications(await res.json());
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
+    const timeout = setTimeout(fetchNotifications, 500);
     const interval = setInterval(fetchNotifications, 30_000);
-    return () => clearInterval(interval);
+    return () => { clearTimeout(timeout); clearInterval(interval); };
   }, [fetchNotifications]);
 
   useEffect(() => {
