@@ -48,6 +48,7 @@ export function TaskDetailModal({
   const [priority, setPriority] = useState(task.priority);
   const [status, setStatus] = useState(task.status);
   const [assigneeId, setAssigneeId] = useState(task.assigneeId || "");
+  const [dueDate, setDueDate] = useState(task.dueDate ? task.dueDate.slice(0, 10) : "");
 
   const fetchComments = useCallback(async () => {
     const res = await fetch(`/api/tasks/${task.id}/comments`);
@@ -180,6 +181,30 @@ export function TaskDetailModal({
                   <option key={u.id} value={u.id}>{u.name || u.email}</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Deadline</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => {
+                  setDueDate(e.target.value);
+                  handleUpdate("dueDate", e.target.value || null);
+                }}
+                className="block w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              />
+              {dueDate && (
+                <button
+                  type="button"
+                  onClick={() => { setDueDate(""); handleUpdate("dueDate", null); }}
+                  className="text-xs text-slate-400 hover:text-red-500 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 

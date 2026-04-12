@@ -1,5 +1,5 @@
-import { MessageSquare, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { MessageSquare, Calendar, AlertTriangle } from "lucide-react";
+import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
 import type { Task } from "./kanban-board";
 
@@ -10,11 +10,21 @@ const priorityConfig: Record<string, { label: string; dot: string }> = {
   URGENT: { label: "Dringend", dot: "bg-red-500" },
 };
 
+function getDueDateStyle(dueDate: string, status: string) {
+  if (status === "DONE") return "text-slate-400";
+  const date = new Date(dueDate);
+  if (isToday(date)) return "text-amber-600 font-medium";
+  if (isPast(date)) return "text-red-500 font-medium";
+  return "text-slate-400";
+}
+
 export function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
   const priority = priorityConfig[task.priority] || priorityConfig.MEDIUM;
   const initials = task.assignee?.name
     ? task.assignee.name.split(" ").map((n) => n[0]).join("").toUpperCase()
     : task.assignee?.email?.[0]?.toUpperCase();
+
+  const isOverdue = task.dueDate && task.status !== "DONE" && isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate));
 
   return (
     <div
@@ -27,7 +37,7 @@ export function TaskCard({ task, onClick }: { task: Task; onClick: () => void })
           onClick();
         }
       }}
-      className="w-full text-left bg-white border border-slate-200 rounded-lg p-3 mb-2 hover:border-slate-300 hover:shadow-sm transition cursor-grab active:cursor-grabbing select-none"
+      className={`w-full text-left bg-white border rounded-lg p-3 mb-2 hover:shadow-sm transition cursor-grab active:cursor-grabbing select-none ${isOverdue ? "border-red-300 hover:border-red-400" : "border-slate-200 hover:border-slate-300"}`}
     >
       <div className="flex items-start gap-2 mb-2">
         <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${priority.dot}`} />
@@ -35,15 +45,15 @@ export function TaskCard({ task, onClick }: { task: Task; onClick: () => void })
       </div>
 
       <div className="flex items-center justify-between mt-2">
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-xs">
           {task.dueDate && (
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
+            <span className={`flex items-center gap-1 ${getDueDateStyle(task.dueDate, task.status)}`}>
+              {isOverdue ? <AlertTriangle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
               {format(new Date(task.dueDate), "dd. MMM", { locale: de })}
             </span>
           )}
           {task._count.comments > 0 && (
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 text-slate-400">
               <MessageSquare className="w-3 h-3" />
               {task._count.comments}
             </span>

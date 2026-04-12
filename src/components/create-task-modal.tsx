@@ -20,6 +20,7 @@ export function CreateTaskModal({
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [assigneeId, setAssigneeId] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,6 +37,7 @@ export function CreateTaskModal({
           status: defaultStatus,
           priority,
           assigneeId: assigneeId || null,
+          dueDate: dueDate || null,
         }),
       });
 
@@ -116,6 +118,16 @@ export function CreateTaskModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Deadline</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
