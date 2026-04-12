@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowLeft, Send, Bug, Lightbulb, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Bug, Lightbulb, Sparkles, Trash2, Pencil, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 type TicketUser = { id: string; name: string | null; email: string; image?: string | null };
@@ -36,10 +36,16 @@ const typeConfig: Record<string, { label: string; icon: typeof Bug; color: strin
   IDEA: { label: "Idee", icon: Lightbulb, color: "bg-amber-50 text-amber-700" },
 };
 
+const typeOptions = [
+  { value: "BUG", label: "Bug" },
+  { value: "FEATURE", label: "Feature Request" },
+  { value: "IDEA", label: "Idee" },
+];
+
 const statusOptions = [
   { value: "OPEN", label: "Offen" },
   { value: "IN_PROGRESS", label: "In Arbeit" },
-  { value: "RESOLVED", label: "Geloest" },
+  { value: "RESOLVED", label: "Gelöst" },
   { value: "CLOSED", label: "Geschlossen" },
 ];
 
@@ -58,6 +64,15 @@ export default function TicketDetailPage() {
   const [newComment, setNewComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
 
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [editDesc, setEditDesc] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descInputRef = useRef<HTMLTextAreaElement>(null);
+
   const fetchTicket = useCallback(async () => {
     const res = await fetch(`/api/tickets/${params.id}`);
     if (res.ok) {
@@ -73,22 +88,57 @@ export default function TicketDetailPage() {
     fetchTicket();
   }, [fetchTicket]);
 
-  async function handleStatusChange(status: string) {
-    await fetch(`/api/tickets/${params.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    fetchTicket();
+  async function patchTicket(data: Record<string, unknown>) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/tickets/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        toast.error("Speichern fehlgeschlagen");
+        return;
+      }
+      await fetchTicket();
+      toast.success("Gespeichert");
+    } catch {
+      toast.error("Speichern fehlgeschlagen");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  async function handlePriorityChange(priority: string) {
-    await fetch(`/api/tickets/${params.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priority }),
-    });
-    fetchTicket();
+  function startEditTitle() {
+    if (!ticket) return;
+    setEditTitle(ticket.title);
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 50);
+  }
+
+  async function saveTitle() {
+    if (!editTitle.trim() || editTitle === ticket?.title) {
+      setEditingTitle(false);
+      return;
+    }
+    await patchTicket({ title: editTitle.trim() });
+    setEditingTitle(false);
+  }
+
+  function startEditDesc() {
+    if (!ticket) return;
+    setEditDesc(ticket.description);
+    setEditingDesc(true);
+    setTimeout(() => descInputRef.current?.focus(), 50);
+  }
+
+  async function saveDesc() {
+    if (!editDesc.trim() || editDesc === ticket?.description) {
+      setEditingDesc(false);
+      return;
+    }
+    await patchTicket({ description: editDesc.trim() });
+    setEditingDesc(false);
   }
 
   async function handleAddComment(e: React.FormEvent) {
@@ -114,14 +164,14 @@ export default function TicketDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm("Ticket wirklich loeschen?")) return;
+    if (!confirm("Ticket wirklich löschen?")) return;
     const res = await fetch(`/api/tickets/${params.id}`, { method: "DELETE" });
     if (res.ok) {
-      toast.success("Ticket geloescht");
+      toast.success("Ticket gelöscht");
       router.push("/tickets");
     } else {
       const data = await res.json();
-      toast.error(data.error || "Fehler beim Loeschen");
+      toast.error(data.error || "Fehler beim Löschen");
     }
   }
 
@@ -144,38 +194,118 @@ export default function TicketDetailPage() {
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          Zurueck zu Tickets
+          Zurück zu Tickets
         </Link>
-        <button onClick={handleDelete} className="p-2 text-slate-400 hover:text-red-500 transition">
+        <button onClick={handleDelete} className="p-2 text-slate-400 hover:text-red-500 transition" title="Ticket löschen">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-6 mb-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${type?.color}`}>
-                <TypeIcon className="w-3 h-3" />
-                {type?.label}
-              </span>
-              <span className="text-xs text-slate-400">
-                {format(new Date(ticket.createdAt), "dd. MMM yyyy, HH:mm", { locale: de })}
-              </span>
-            </div>
-            <h1 className="text-xl font-bold text-slate-900">{ticket.title}</h1>
-          </div>
+        {/* Type badge + timestamp */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${type?.color}`}>
+            <TypeIcon className="w-3 h-3" />
+            {type?.label}
+          </span>
+          <span className="text-xs text-slate-400">
+            {format(new Date(ticket.createdAt), "dd. MMM yyyy, HH:mm", { locale: de })}
+          </span>
         </div>
 
-        <p className="text-sm text-slate-700 whitespace-pre-wrap mb-6">{ticket.description}</p>
+        {/* Editable Title */}
+        {editingTitle ? (
+          <div className="flex items-center gap-2 mb-4">
+            <input
+              ref={titleInputRef}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveTitle();
+                if (e.key === "Escape") setEditingTitle(false);
+              }}
+              disabled={saving}
+              className="flex-1 text-xl font-bold text-slate-900 border border-slate-300 rounded-lg px-3 py-1.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+            />
+            <button
+              onClick={saveTitle}
+              disabled={saving}
+              className="p-1.5 rounded-md text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setEditingTitle(false)}
+              className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="group flex items-start gap-2 mb-4">
+            <h1 className="text-xl font-bold text-slate-900 flex-1">{ticket.title}</h1>
+            <button
+              onClick={startEditTitle}
+              className="p-1.5 rounded-md text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-600 hover:bg-slate-100 transition shrink-0 mt-0.5"
+              title="Titel bearbeiten"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
-        <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
+        {/* Editable Description */}
+        {editingDesc ? (
+          <div className="mb-6">
+            <textarea
+              ref={descInputRef}
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setEditingDesc(false);
+              }}
+              disabled={saving}
+              rows={6}
+              className="w-full text-sm text-slate-700 border border-slate-300 rounded-lg px-3.5 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition resize-none"
+            />
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={saveDesc}
+                disabled={saving}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50 transition"
+              >
+                Speichern
+              </button>
+              <button
+                onClick={() => setEditingDesc(false)}
+                className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-md transition"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="group relative mb-6">
+            <p className="text-sm text-slate-700 whitespace-pre-wrap pr-8">{ticket.description}</p>
+            <button
+              onClick={startEditDesc}
+              className="absolute top-0 right-0 p-1.5 rounded-md text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-600 hover:bg-slate-100 transition"
+              title="Beschreibung bearbeiten"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Properties */}
+        <div className="flex items-center gap-4 pt-4 border-t border-slate-100 flex-wrap">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
             <select
               value={ticket.status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className="rounded-lg border border-slate-300 pl-3 pr-8 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              onChange={(e) => patchTicket({ status: e.target.value })}
+              disabled={saving}
+              className="rounded-lg border border-slate-300 pl-3 pr-8 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition disabled:opacity-50"
             >
               {statusOptions.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
@@ -183,11 +313,12 @@ export default function TicketDetailPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Prioritaet</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Priorität</label>
             <select
               value={ticket.priority}
-              onChange={(e) => handlePriorityChange(e.target.value)}
-              className="rounded-lg border border-slate-300 pl-3 pr-8 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              onChange={(e) => patchTicket({ priority: e.target.value })}
+              disabled={saving}
+              className="rounded-lg border border-slate-300 pl-3 pr-8 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition disabled:opacity-50"
             >
               {priorityOptions.map((p) => (
                 <option key={p.value} value={p.value}>{p.label}</option>
@@ -195,12 +326,26 @@ export default function TicketDetailPage() {
             </select>
           </div>
           <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Typ</label>
+            <select
+              value={ticket.type}
+              onChange={(e) => patchTicket({ type: e.target.value })}
+              disabled={saving}
+              className="rounded-lg border border-slate-300 pl-3 pr-8 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition disabled:opacity-50"
+            >
+              {typeOptions.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Erstellt von</label>
-            <p className="text-sm text-slate-700">{ticket.reporter.name || ticket.reporter.email}</p>
+            <p className="text-sm text-slate-700 py-1.5">{ticket.reporter.name || ticket.reporter.email}</p>
           </div>
         </div>
       </div>
 
+      {/* Comments */}
       <div className="bg-white border border-slate-200 rounded-xl p-6">
         <h2 className="text-sm font-semibold text-slate-900 mb-4">
           Kommentare ({ticket.comments.length})

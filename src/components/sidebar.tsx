@@ -10,6 +10,7 @@ import {
   UserCircle,
   MessageCircle,
   FolderOpen,
+  TrendingUp,
 } from "lucide-react";
 
 const navigation = [
@@ -18,6 +19,10 @@ const navigation = [
   { name: "Tickets", href: "/tickets", icon: Ticket },
   { name: "Dokumente", href: "/mediathek", icon: FolderOpen },
   { name: "CleverChat", href: "/cleverchat", icon: MessageCircle },
+];
+
+const researchNav = [
+  { name: "Market Research", href: "/research/market-research", icon: TrendingUp },
 ];
 
 const settingsNav = [
@@ -45,6 +50,27 @@ export function Sidebar() {
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition ${
+                active
+                  ? "bg-primary-50 text-primary-700"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <item.icon className={`w-[18px] h-[18px] ${active ? "text-primary-600" : "text-slate-400"}`} />
+              {item.name}
+            </Link>
+          );
+        })}
+
+        <p className="px-3 pt-6 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+          Research
+        </p>
+        {researchNav.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
