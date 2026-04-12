@@ -240,17 +240,34 @@ model ChatMessage {
   @@index([conversationId, createdAt])
 }
 
+model MediaFolder {
+  id        String   @id @default(cuid())
+  name      String
+  parentId  String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  parent   MediaFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children MediaFolder[] @relation("FolderTree")
+  files    MediaFile[]
+
+  @@index([parentId])
+}
+
 model MediaFile {
-  id          String   @id @default(cuid())
-  name        String
-  url         String
-  size        Int
-  contentType String
+  id           String   @id @default(cuid())
+  name         String
+  url          String
+  size         Int
+  contentType  String
+  folderId     String?
   uploadedById String
-  createdAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
-  uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  folder     MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  uploadedBy User         @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
 
+  @@index([folderId])
   @@index([uploadedById])
   @@index([createdAt])
 }
