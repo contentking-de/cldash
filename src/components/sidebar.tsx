@@ -8,7 +8,6 @@ import {
   Ticket,
   Users,
   UserCircle,
-  Scale,
 } from "lucide-react";
 
 const navigation = [
@@ -32,12 +31,12 @@ export function Sidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 w-60 bg-white border-r border-slate-200 flex flex-col">
-      <div className="h-16 flex items-center gap-2.5 px-6 border-b border-slate-200">
-        <Scale className="w-6 h-6 text-primary-600" />
-        <div>
-          <span className="text-base font-bold text-slate-900">clever.legal</span>
-          <span className="block text-[11px] text-slate-400 -mt-0.5 leading-tight">Admin</span>
-        </div>
+      <div className="h-16 flex items-center px-5 border-b border-slate-200">
+        <img
+          src="/cleverlegal_logo.png"
+          alt="clever.legal"
+          className="h-10 w-auto"
+        />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

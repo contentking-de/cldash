@@ -48,6 +48,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
     verifyRequest: "/verify",
   },
+  events: {
+    async createUser({ user }) {
+      if (!user.email) return;
+      const invitation = await prisma.invitation.findFirst({
+        where: { email: user.email, acceptedAt: null },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!invitation) return;
+
+      if (invitation.name && !user.name) {
+        await prisma.user.update({
+          where: { id: user.id! },
+          data: { name: invitation.name, role: invitation.role },
+        });
+      } else {
+        await prisma.user.update({
+          where: { id: user.id! },
+          data: { role: invitation.role },
+        });
+      }
+      await prisma.invitation.update({
+        where: { id: invitation.id },
+        data: { acceptedAt: new Date() },
+      });
+    },
+  },
   callbacks: {
     async session({ session, user }) {
       if (session.user) {

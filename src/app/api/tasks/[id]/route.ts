@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendTaskStatusChangedEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -32,6 +33,13 @@ export async function PATCH(
     data.dueDate = data.dueDate ? new Date(data.dueDate as string) : null;
   }
 
+  const oldTask = parsed.data.status
+    ? await prisma.task.findUnique({
+        where: { id },
+        select: { status: true, assigneeId: true },
+      })
+    : null;
+
   const task = await prisma.task.update({
     where: { id },
     data,
@@ -41,6 +49,23 @@ export async function PATCH(
       _count: { select: { comments: true } },
     },
   });
+
+  if (
+    oldTask &&
+    parsed.data.status &&
+    oldTask.status !== parsed.data.status &&
+    task.assignee &&
+    task.assignee.id !== session.user.id
+  ) {
+    sendTaskStatusChangedEmail({
+      assigneeEmail: task.assignee.email,
+      assigneeName: task.assignee.name,
+      taskTitle: task.title,
+      oldStatus: oldTask.status,
+      newStatus: parsed.data.status,
+      changedByName: session.user.name || session.user.email || "Jemand",
+    }).catch(console.error);
+  }
 
   return NextResponse.json(task);
 }

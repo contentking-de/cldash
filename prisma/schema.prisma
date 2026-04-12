@@ -168,6 +168,7 @@ model TicketComment {
 model Invitation {
   id         String    @id @default(cuid())
   email      String
+  name       String?
   role       Role      @default(MEMBER)
   token      String    @unique @default(cuid())
   invitedById String

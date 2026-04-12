@@ -6,6 +6,7 @@ import { z } from "zod";
 
 const inviteSchema = z.object({
   email: z.string().email(),
+  name: z.string().min(1).max(100).optional(),
   role: z.enum(["ADMIN", "MEMBER"]).optional(),
 });
 
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, role } = parsed.data;
+  const { email, name, role } = parsed.data;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
   const invitation = await prisma.invitation.create({
     data: {
       email,
+      name: name || null,
       role: role || "MEMBER",
       invitedById: session.user.id,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -46,6 +48,7 @@ export async function POST(req: Request) {
   });
 
   const inviteUrl = `${process.env.NEXTAUTH_URL}/login?email=${encodeURIComponent(email)}`;
+  const greeting = name ? `Hallo ${name},` : "Hallo,";
 
   await resend.emails.send({
     from: fromEmail,
@@ -59,10 +62,10 @@ export async function POST(req: Request) {
         </div>
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px; text-align: center;">
           <p style="color: #334155; font-size: 16px; margin: 0 0 8px;">
-            Du wurdest von <strong>${session.user.name || session.user.email}</strong> eingeladen.
+            ${greeting}
           </p>
           <p style="color: #64748b; font-size: 14px; margin: 0 0 24px;">
-            Klicke auf den Button, um dem Team beizutreten:
+            Du wurdest von <strong>${session.user.name || session.user.email}</strong> eingeladen, dem Team beizutreten. Klicke auf den Button, um loszulegen:
           </p>
           <a href="${inviteUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 32px; border-radius: 8px;">
             Einladung annehmen

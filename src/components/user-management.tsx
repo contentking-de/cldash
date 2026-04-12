@@ -21,6 +21,7 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState("MEMBER");
   const [inviting, setInviting] = useState(false);
 
@@ -61,12 +62,13 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
       const res = await fetch("/api/users/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        body: JSON.stringify({ email: inviteEmail, name: inviteName || undefined, role: inviteRole }),
       });
 
       if (res.ok) {
         toast.success("Einladung gesendet");
         setInviteEmail("");
+        setInviteName("");
         setShowInvite(false);
       } else {
         const data = await res.json();
@@ -105,6 +107,13 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
         <form onSubmit={handleInvite} className="bg-white border border-slate-200 rounded-xl p-5 mb-6">
           <h3 className="text-sm font-semibold text-slate-900 mb-4">Neuen Nutzer einladen</h3>
           <div className="flex gap-3">
+            <input
+              type="text"
+              value={inviteName}
+              onChange={(e) => setInviteName(e.target.value)}
+              placeholder="Name"
+              className="w-48 rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+            />
             <input
               type="email"
               required

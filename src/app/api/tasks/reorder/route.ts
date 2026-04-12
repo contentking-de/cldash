@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendTaskStatusChangedEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -23,10 +24,15 @@ export async function PUT(req: Request) {
 
   const { taskId, newStatus, newOrder } = parsed.data;
 
-  await prisma.$transaction(async (tx: TxClient) => {
-    const task = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
-    const oldStatus = task.status;
+  const task = await prisma.task.findUniqueOrThrow({
+    where: { id: taskId },
+    include: {
+      assignee: { select: { id: true, name: true, email: true } },
+    },
+  });
+  const oldStatus = task.status;
 
+  await prisma.$transaction(async (tx: TxClient) => {
     if (oldStatus !== newStatus) {
       await tx.task.updateMany({
         where: { status: oldStatus, order: { gt: task.order } },
@@ -55,6 +61,21 @@ export async function PUT(req: Request) {
       data: { status: newStatus, order: newOrder },
     });
   });
+
+  if (
+    oldStatus !== newStatus &&
+    task.assignee &&
+    task.assignee.id !== session.user.id
+  ) {
+    sendTaskStatusChangedEmail({
+      assigneeEmail: task.assignee.email,
+      assigneeName: task.assignee.name,
+      taskTitle: task.title,
+      oldStatus,
+      newStatus,
+      changedByName: session.user.name || session.user.email || "Jemand",
+    }).catch(console.error);
+  }
 
   return NextResponse.json({ success: true });
 }
