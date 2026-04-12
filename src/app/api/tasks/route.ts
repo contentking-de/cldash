@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendTaskAssignedEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 const createTaskSchema = z.object({
   title: z.string().min(1).max(200),
@@ -65,12 +66,20 @@ export async function POST(req: Request) {
   });
 
   if (task.assignee && task.assignee.id !== session.user.id) {
+    const assignedByName = session.user.name || session.user.email || "Jemand";
     sendTaskAssignedEmail({
       assigneeEmail: task.assignee.email,
       assigneeName: task.assignee.name,
       taskTitle: task.title,
       taskId: task.id,
-      assignedByName: session.user.name || session.user.email || "Jemand",
+      assignedByName,
+    }).catch(console.error);
+    createNotification({
+      userId: task.assignee.id,
+      type: "task_assigned",
+      title: `Neuer Task: ${task.title}`,
+      body: `${assignedByName} hat dir einen neuen Task zugewiesen.`,
+      link: "/tasks",
     }).catch(console.error);
   }
 

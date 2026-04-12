@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendTaskStatusChangedEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -57,13 +58,25 @@ export async function PATCH(
     task.assignee &&
     task.assignee.id !== session.user.id
   ) {
+    const changedByName = session.user.name || session.user.email || "Jemand";
+    const statusLabels: Record<string, string> = {
+      BACKLOG: "Backlog", TODO: "To Do", IN_PROGRESS: "In Arbeit",
+      REVIEW: "Review", DONE: "Erledigt",
+    };
     sendTaskStatusChangedEmail({
       assigneeEmail: task.assignee.email,
       assigneeName: task.assignee.name,
       taskTitle: task.title,
       oldStatus: oldTask.status,
       newStatus: parsed.data.status,
-      changedByName: session.user.name || session.user.email || "Jemand",
+      changedByName,
+    }).catch(console.error);
+    createNotification({
+      userId: task.assignee.id,
+      type: "task_status",
+      title: `Status geändert: ${task.title}`,
+      body: `${changedByName} hat den Status von "${statusLabels[oldTask.status] || oldTask.status}" auf "${statusLabels[parsed.data.status] || parsed.data.status}" geändert.`,
+      link: "/tasks",
     }).catch(console.error);
   }
 

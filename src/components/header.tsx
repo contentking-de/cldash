@@ -3,6 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { NotificationBell } from "./notification-bell";
 
 export function Header() {
   const { data: session } = useSession();
@@ -24,7 +25,8 @@ export function Header() {
     : session?.user?.email?.[0]?.toUpperCase() || "?";
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-end px-6 sticky top-0 z-20">
+    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-end gap-2 px-6 sticky top-0 z-20">
+      <NotificationBell />
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen(!open)}

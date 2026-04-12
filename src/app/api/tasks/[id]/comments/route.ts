@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendTaskCommentEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 const commentSchema = z.object({
   content: z.string().min(1).max(2000),
@@ -54,12 +55,20 @@ export async function POST(
   });
 
   if (task?.assignee && task.assignee.id !== session.user.id) {
+    const commentAuthor = session.user.name || session.user.email || "Jemand";
     sendTaskCommentEmail({
       assigneeEmail: task.assignee.email,
       assigneeName: task.assignee.name,
       taskTitle: task.title,
-      commentAuthor: session.user.name || session.user.email || "Jemand",
+      commentAuthor,
       commentContent: parsed.data.content,
+    }).catch(console.error);
+    createNotification({
+      userId: task.assignee.id,
+      type: "task_comment",
+      title: `Neuer Kommentar: ${task.title}`,
+      body: `${commentAuthor}: ${parsed.data.content.length > 100 ? parsed.data.content.slice(0, 100) + "…" : parsed.data.content}`,
+      link: "/tasks",
     }).catch(console.error);
   }
 

@@ -59,6 +59,7 @@ model User {
   assignedTickets Ticket[]      @relation("TicketAssignee")
   ticketComments  TicketComment[]
   invitations     Invitation[]
+  notifications   Notification[]
 }
 
 model Account {
@@ -180,4 +181,20 @@ model Invitation {
 
   @@index([token])
   @@index([email])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
 }
