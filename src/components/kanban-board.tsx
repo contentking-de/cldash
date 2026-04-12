@@ -490,6 +490,7 @@ export function KanbanBoard({ users, currentUserId }: { users: TaskUser[]; curre
         <TaskDetailModal
           task={selectedTask}
           users={users}
+          currentUserId={currentUserId}
           onClose={() => setSelectedTask(null)}
           onUpdate={handleTaskUpdated}
         />

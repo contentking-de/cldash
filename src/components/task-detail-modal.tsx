@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, type KeyboardEvent } from "react";
-import { X, Send, Trash2 } from "lucide-react";
+import { X, Send, Trash2, Pencil, Check } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import toast from "react-hot-toast";
@@ -32,11 +32,13 @@ const statusOptions = [
 export function TaskDetailModal({
   task,
   users,
+  currentUserId,
   onClose,
   onUpdate,
 }: {
   task: Task;
   users: TaskUser[];
+  currentUserId: string;
   onClose: () => void;
   onUpdate: () => void;
 }) {
@@ -56,6 +58,9 @@ export function TaskDetailModal({
   const [mentionedUserIds, setMentionedUserIds] = useState<Set<string>>(new Set());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentionListRef = useRef<HTMLDivElement>(null);
+
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
 
   const filteredMentionUsers = mentionQuery !== null
     ? users.filter((u) => {
@@ -182,6 +187,45 @@ export function TaskDetailModal({
     });
   }
 
+  async function handleEditComment(commentId: string) {
+    if (!editContent.trim()) return;
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/comments/${commentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editContent }),
+      });
+      if (res.ok) {
+        setEditingCommentId(null);
+        setEditContent("");
+        fetchComments();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Fehler beim Bearbeiten");
+      }
+    } catch {
+      toast.error("Fehler beim Bearbeiten");
+    }
+  }
+
+  async function handleDeleteComment(commentId: string) {
+    if (!confirm("Kommentar wirklich loeschen?")) return;
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/comments/${commentId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchComments();
+        toast.success("Kommentar geloescht");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Fehler beim Loeschen");
+      }
+    } catch {
+      toast.error("Fehler beim Loeschen");
+    }
+  }
+
   async function handleDelete() {
     if (!confirm("Task wirklich loeschen?")) return;
     try {
@@ -306,7 +350,7 @@ export function TaskDetailModal({
                 <p className="text-sm text-slate-400">Noch keine Kommentare.</p>
               )}
               {comments.map((c) => (
-                <div key={c.id} className="flex gap-3">
+                <div key={c.id} className="flex gap-3 group">
                   <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
                     {c.author.name?.[0]?.toUpperCase() || c.author.email[0].toUpperCase()}
                   </div>
@@ -318,8 +362,53 @@ export function TaskDetailModal({
                       <span className="text-xs text-slate-400">
                         {format(new Date(c.createdAt), "dd. MMM, HH:mm", { locale: de })}
                       </span>
+                      {c.author.id === currentUserId && editingCommentId !== c.id && (
+                        <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition">
+                          <button
+                            type="button"
+                            onClick={() => { setEditingCommentId(c.id); setEditContent(c.content); }}
+                            className="p-0.5 text-slate-400 hover:text-primary-600 transition"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteComment(c.id)}
+                            className="p-0.5 text-slate-400 hover:text-red-500 transition"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
                     </div>
-                    <p className="text-sm text-slate-600 mt-0.5">{renderCommentContent(c.content)}</p>
+                    {editingCommentId === c.id ? (
+                      <div className="mt-1 flex gap-2">
+                        <input
+                          type="text"
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleEditComment(c.id); if (e.key === "Escape") setEditingCommentId(null); }}
+                          autoFocus
+                          className="flex-1 rounded-md border border-slate-300 px-2.5 py-1 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleEditComment(c.id)}
+                          className="p-1 text-primary-600 hover:text-primary-700 transition"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingCommentId(null)}
+                          className="p-1 text-slate-400 hover:text-slate-600 transition"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-600 mt-0.5">{renderCommentContent(c.content)}</p>
+                    )}
                   </div>
                 </div>
               ))}
