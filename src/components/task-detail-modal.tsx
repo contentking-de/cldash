@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, type KeyboardEvent } from "react";
 import { X, Send, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -50,6 +50,20 @@ export function TaskDetailModal({
   const [assigneeId, setAssigneeId] = useState(task.assigneeId || "");
   const [dueDate, setDueDate] = useState(task.dueDate ? task.dueDate.slice(0, 10) : "");
 
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionStartPos, setMentionStartPos] = useState(0);
+  const [mentionedUserIds, setMentionedUserIds] = useState<Set<string>>(new Set());
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mentionListRef = useRef<HTMLDivElement>(null);
+
+  const filteredMentionUsers = mentionQuery !== null
+    ? users.filter((u) => {
+        const q = mentionQuery.toLowerCase();
+        return (u.name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+      })
+    : [];
+
   const fetchComments = useCallback(async () => {
     const res = await fetch(`/api/tasks/${task.id}/comments`);
     if (res.ok) setComments(await res.json());
@@ -81,10 +95,14 @@ export function TaskDetailModal({
       const res = await fetch(`/api/tasks/${task.id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newComment }),
+        body: JSON.stringify({
+          content: newComment,
+          mentionedUserIds: Array.from(mentionedUserIds),
+        }),
       });
       if (res.ok) {
         setNewComment("");
+        setMentionedUserIds(new Set());
         fetchComments();
       }
     } catch {
@@ -92,6 +110,76 @@ export function TaskDetailModal({
     } finally {
       setSendingComment(false);
     }
+  }
+
+  function handleCommentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    setNewComment(value);
+
+    const cursorPos = e.target.selectionStart;
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const atMatch = textBeforeCursor.match(/@([^\s@]*)$/);
+
+    if (atMatch) {
+      setMentionQuery(atMatch[1]);
+      setMentionStartPos(cursorPos - atMatch[1].length - 1);
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
+  }
+
+  function handleCommentKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionQuery !== null && filteredMentionUsers.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((i) => Math.min(i + 1, filteredMentionUsers.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertMention(filteredMentionUsers[mentionIndex]);
+      } else if (e.key === "Escape") {
+        setMentionQuery(null);
+      }
+    }
+  }
+
+  function insertMention(user: TaskUser) {
+    const displayName = user.name || user.email;
+    const before = newComment.slice(0, mentionStartPos);
+    const after = newComment.slice(textareaRef.current?.selectionStart ?? mentionStartPos);
+    const inserted = `@${displayName} `;
+    setNewComment(before + inserted + after);
+    setMentionedUserIds((prev) => new Set(prev).add(user.id));
+    setMentionQuery(null);
+
+    requestAnimationFrame(() => {
+      const pos = before.length + inserted.length;
+      textareaRef.current?.setSelectionRange(pos, pos);
+      textareaRef.current?.focus();
+    });
+  }
+
+  function renderCommentContent(content: string) {
+    const parts = content.split(/(@\S+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("@")) {
+        const mentionName = part.slice(1);
+        const matched = users.some(
+          (u) => u.name === mentionName || u.email === mentionName
+        );
+        if (matched) {
+          return (
+            <span key={i} className="text-primary-600 font-medium">
+              {part}
+            </span>
+          );
+        }
+      }
+      return <span key={i}>{part}</span>;
+    });
   }
 
   async function handleDelete() {
@@ -231,27 +319,58 @@ export function TaskDetailModal({
                         {format(new Date(c.createdAt), "dd. MMM, HH:mm", { locale: de })}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-600 mt-0.5">{c.content}</p>
+                    <p className="text-sm text-slate-600 mt-0.5">{renderCommentContent(c.content)}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <form onSubmit={handleAddComment} className="flex gap-2">
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Kommentar schreiben..."
-                className="flex-1 rounded-lg border border-slate-300 px-3.5 py-2 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
-              />
-              <button
-                type="submit"
-                disabled={sendingComment || !newComment.trim()}
-                className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+            <form onSubmit={handleAddComment} className="relative">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <textarea
+                    ref={textareaRef}
+                    value={newComment}
+                    onChange={handleCommentChange}
+                    onKeyDown={handleCommentKeyDown}
+                    placeholder="Kommentar schreiben... (@Name zum Erwähnen)"
+                    rows={2}
+                    className="block w-full rounded-lg border border-slate-300 px-3.5 py-2 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition resize-none"
+                  />
+                  {mentionQuery !== null && filteredMentionUsers.length > 0 && (
+                    <div
+                      ref={mentionListRef}
+                      className="absolute bottom-full left-0 mb-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-50"
+                    >
+                      {filteredMentionUsers.slice(0, 6).map((u, i) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); insertMention(u); }}
+                          className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
+                            i === mentionIndex ? "bg-primary-50 text-primary-700" : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
+                            {u.name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                          </span>
+                          <span className="truncate">
+                            {u.name || u.email}
+                            {u.name && <span className="text-slate-400 ml-1 text-xs">{u.email}</span>}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={sendingComment || !newComment.trim()}
+                  className="self-end px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </form>
           </div>
         </div>

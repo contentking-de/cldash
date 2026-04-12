@@ -20,6 +20,7 @@ const typeIcons: Record<string, string> = {
   task_assigned: "📋",
   task_status: "🔄",
   task_comment: "💬",
+  task_mention: "🔔",
 };
 
 export function NotificationBell() {
