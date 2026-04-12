@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Trash2, Search } from "lucide-react";
+import { Send, Loader2, Trash2, Search, FileDown } from "lucide-react";
+import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   id: string;
@@ -20,6 +23,7 @@ export function MarketResearchChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -148,6 +152,42 @@ export function MarketResearchChat() {
     setInput("");
   }
 
+  async function saveAsWord() {
+    const contentMessages = messages.filter((m) => m.content.trim());
+    if (contentMessages.length === 0) return;
+
+    setIsSaving(true);
+    try {
+      const firstUserMsg = contentMessages.find((m) => m.role === "user");
+      const title = firstUserMsg
+        ? firstUserMsg.content.slice(0, 80)
+        : "Market Research";
+
+      const res = await fetch("/api/research/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: contentMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          title,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Export fehlgeschlagen");
+      }
+
+      toast.success("Word-Dokument in 08_Market_Research gespeichert");
+    } catch (err) {
+      toast.error((err as Error).message || "Export fehlgeschlagen");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 overflow-hidden">
       {/* Header */}
@@ -166,13 +206,27 @@ export function MarketResearchChat() {
           </div>
         </div>
         {messages.length > 0 && (
-          <button
-            onClick={clearChat}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Chat leeren
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={saveAsWord}
+              disabled={isSaving || isStreaming}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-md transition disabled:opacity-50"
+            >
+              {isSaving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <FileDown className="w-3.5 h-3.5" />
+              )}
+              Als Word speichern
+            </button>
+            <button
+              onClick={clearChat}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Chat leeren
+            </button>
+          </div>
         )}
       </div>
 
@@ -208,22 +262,26 @@ export function MarketResearchChat() {
               key={msg.id}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-primary-600 text-white"
-                    : "bg-slate-100 text-slate-800"
-                }`}
-              >
-                {msg.role === "assistant" && !msg.content && isStreaming ? (
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Denkt nach...</span>
-                  </div>
-                ) : (
+              {msg.role === "user" ? (
+                <div className="max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed bg-primary-600 text-white">
                   <div className="whitespace-pre-wrap">{msg.content}</div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="w-full">
+                  {!msg.content && isStreaming ? (
+                    <div className="flex items-center gap-2 text-slate-400 px-1 py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Denkt nach...</span>
+                    </div>
+                  ) : (
+                    <div className="research-markdown prose prose-slate prose-sm max-w-none px-1">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))
         )}
