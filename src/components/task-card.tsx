@@ -1,4 +1,4 @@
-import { MessageSquare, Calendar, AlertTriangle } from "lucide-react";
+import { MessageSquare, Calendar, AlertTriangle, UserCircle } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
 import type { Task } from "./kanban-board";
@@ -43,6 +43,15 @@ export function TaskCard({ task, onClick }: { task: Task; onClick: () => void })
 
       {task.description && (
         <p className="text-xs text-slate-500 line-clamp-2 mb-2 ml-3.5">{task.description}</p>
+      )}
+
+      {task.creator && (
+        <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1 ml-3.5">
+          <UserCircle className="w-3 h-3" />
+          <span>{task.creator.name || task.creator.email}</span>
+          <span>·</span>
+          <span>{format(new Date(task.createdAt), "dd. MMM yyyy", { locale: de })}</span>
+        </div>
       )}
 
       <div className="flex items-center justify-between mt-2">

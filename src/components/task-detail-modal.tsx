@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, type KeyboardEvent } from "react";
-import { X, Send, Trash2, Pencil, Check, ChevronDown } from "lucide-react";
+import { X, Send, Trash2, Pencil, Check, ChevronDown, UserCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import toast from "react-hot-toast";
@@ -385,6 +385,19 @@ export function TaskDetailModal({
               )}
             </div>
           </div>
+
+          {task.creator && (
+            <div className="flex items-center gap-4 text-sm text-slate-500 py-3 px-4 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-1.5">
+                <UserCircle className="w-4 h-4 text-slate-400" />
+                <span>Erstellt von <span className="font-medium text-slate-700">{task.creator.name || task.creator.email}</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span>{format(new Date(task.createdAt), "dd. MMMM yyyy, HH:mm 'Uhr'", { locale: de })}</span>
+              </div>
+            </div>
+          )}
 
           <div>
             <h3 className="text-sm font-semibold text-slate-900 mb-3">
