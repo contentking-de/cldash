@@ -81,7 +81,7 @@ export default function NewTicketPage() {
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              className="block w-full rounded-lg border border-slate-300 pl-3.5 pr-8 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
             >
               <option value="BUG">Bug</option>
               <option value="FEATURE">Feature Request</option>
@@ -94,7 +94,7 @@ export default function NewTicketPage() {
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              className="block w-full rounded-lg border border-slate-300 pl-3.5 pr-8 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
             >
               <option value="LOW">Niedrig</option>
               <option value="MEDIUM">Mittel</option>

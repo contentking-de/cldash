@@ -94,7 +94,7 @@ export function CreateTaskModal({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                className="block w-full rounded-lg border border-slate-300 pl-3.5 pr-8 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
               >
                 <option value="LOW">Niedrig</option>
                 <option value="MEDIUM">Mittel</option>
@@ -108,7 +108,7 @@ export function CreateTaskModal({
               <select
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
-                className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                className="block w-full rounded-lg border border-slate-300 pl-3.5 pr-8 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
               >
                 <option value="">Niemand</option>
                 {users.map((u) => (

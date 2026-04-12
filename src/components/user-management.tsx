@@ -159,7 +159,7 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              className="rounded-lg border border-slate-300 pl-3.5 pr-8 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
             >
               <option value="MEMBER">Member</option>
               <option value="ADMIN">Admin</option>
@@ -283,7 +283,7 @@ export function UserManagement({ currentUserId, isAdmin }: { currentUserId: stri
                         <select
                           value={user.role}
                           onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                          className="rounded-lg border border-slate-300 px-2 py-1 text-xs focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                          className="rounded-lg border border-slate-300 pl-2 pr-7 py-1 text-xs focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
                         >
                           <option value="MEMBER">Member</option>
                           <option value="ADMIN">Admin</option>

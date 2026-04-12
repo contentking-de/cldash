@@ -150,7 +150,7 @@ export function TaskDetailModal({
               <select
                 value={status}
                 onChange={(e) => { setStatus(e.target.value); handleUpdate("status", e.target.value); }}
-                className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                className="block w-full rounded-lg border border-slate-300 pl-3 pr-8 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
               >
                 {statusOptions.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
@@ -162,7 +162,7 @@ export function TaskDetailModal({
               <select
                 value={priority}
                 onChange={(e) => { setPriority(e.target.value); handleUpdate("priority", e.target.value); }}
-                className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                className="block w-full rounded-lg border border-slate-300 pl-3 pr-8 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
               >
                 {priorityOptions.map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
@@ -174,7 +174,7 @@ export function TaskDetailModal({
               <select
                 value={assigneeId}
                 onChange={(e) => { setAssigneeId(e.target.value); handleUpdate("assigneeId", e.target.value || null); }}
-                className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+                className="block w-full rounded-lg border border-slate-300 pl-3 pr-8 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
               >
                 <option value="">Niemand</option>
                 {users.map((u) => (

@@ -175,7 +175,7 @@ export default function TicketDetailPage() {
             <select
               value={ticket.status}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              className="rounded-lg border border-slate-300 pl-3 pr-8 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
             >
               {statusOptions.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
@@ -187,7 +187,7 @@ export default function TicketDetailPage() {
             <select
               value={ticket.priority}
               onChange={(e) => handlePriorityChange(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
+              className="rounded-lg border border-slate-300 pl-3 pr-8 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition"
             >
               {priorityOptions.map((p) => (
                 <option key={p.value} value={p.value}>{p.label}</option>
