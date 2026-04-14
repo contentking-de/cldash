@@ -14,6 +14,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       sendVerificationRequest: async ({ identifier: email, url, provider }) => {
         const { Resend: ResendClient } = await import("resend");
         const resend = new ResendClient(process.env.RESEND_API_KEY);
+
+        // Redirect through an intermediate page to prevent email scanners
+        // from consuming the token via automated GET requests.
+        const callbackUrl = new URL(url);
+        const token = callbackUrl.searchParams.get("token") ?? "";
+        const originalCallback = callbackUrl.searchParams.get("callbackUrl") ?? "/";
+        const confirmParams = new URLSearchParams({
+          token,
+          email,
+          callbackUrl: originalCallback,
+        });
+        const confirmUrl = `${callbackUrl.origin}/confirm-login?${confirmParams.toString()}`;
+
         await resend.emails.send({
           from: provider.from!,
           to: email,
@@ -28,7 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 <p style="color: #334155; font-size: 16px; margin: 0 0 24px;">
                   Klicke auf den Button, um dich einzuloggen:
                 </p>
-                <a href="${url}" style="display: inline-block; background: #2563eb; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 32px; border-radius: 8px;">
+                <a href="${confirmUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 32px; border-radius: 8px;">
                   Einloggen
                 </a>
                 <p style="color: #94a3b8; font-size: 13px; margin-top: 24px;">
