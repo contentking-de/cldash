@@ -1,31 +1,13 @@
-"use client";
+import Link from "next/link";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useState } from "react";
+export default async function ConfirmLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string; email?: string; callbackUrl?: string }>;
+}) {
+  const { token, email, callbackUrl } = await searchParams;
 
-function ConfirmLoginContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [clicked, setClicked] = useState(false);
-
-  const token = searchParams.get("token");
-  const email = searchParams.get("email");
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
-
-  const isValid = token && email;
-
-  function handleConfirm() {
-    if (!isValid) return;
-    setClicked(true);
-    const verifyUrl = `/api/auth/callback/resend?${new URLSearchParams({
-      token,
-      email,
-      callbackUrl,
-    }).toString()}`;
-    window.location.href = verifyUrl;
-  }
-
-  if (!isValid) {
+  if (!token || !email) {
     return (
       <div className="flex min-h-full items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
@@ -38,12 +20,12 @@ function ConfirmLoginContent() {
               Dieser Login-Link ist ungueltig oder abgelaufen. Bitte fordere einen neuen Link an.
             </p>
           </div>
-          <button
-            onClick={() => router.push("/login")}
+          <Link
+            href="/login"
             className="inline-block mt-6 text-sm text-primary-600 hover:text-primary-700 transition"
           >
             Zurueck zum Login
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -67,44 +49,26 @@ function ConfirmLoginContent() {
           <p className="text-sm text-slate-500 mb-6">
             Klicke auf den Button, um dich als <strong className="text-slate-700">{email}</strong> einzuloggen.
           </p>
-          <button
-            onClick={handleConfirm}
-            disabled={clicked}
-            className="w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {clicked ? "Du wirst eingeloggt..." : "Jetzt einloggen"}
-          </button>
+          <form method="POST" action="/api/auth/confirm-login">
+            <input type="hidden" name="token" value={token} />
+            <input type="hidden" name="email" value={email} />
+            <input type="hidden" name="callbackUrl" value={callbackUrl || "/"} />
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition"
+            >
+              Jetzt einloggen
+            </button>
+          </form>
         </div>
 
-        <button
-          onClick={() => router.push("/login")}
+        <Link
+          href="/login"
           className="inline-block mt-6 text-sm text-primary-600 hover:text-primary-700 transition"
         >
           Zurueck zum Login
-        </button>
+        </Link>
       </div>
     </div>
-  );
-}
-
-export default function ConfirmLoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-full items-center justify-center px-4">
-          <div className="w-full max-w-sm text-center">
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold text-slate-900">clever.legal</h1>
-              <p className="text-sm text-slate-500 mt-1">Admin Dashboard</p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-8">
-              <p className="text-sm text-slate-500">Wird geladen...</p>
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <ConfirmLoginContent />
-    </Suspense>
   );
 }
